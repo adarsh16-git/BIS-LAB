@@ -1,0 +1,99 @@
+
+import random
+
+def ant_colony_optimization(distance, ants=5, iterations=20,
+                            alpha=1.0, beta=2.0, evaporation=0.5,
+                            seed=4):
+
+    random.seed(seed)
+    n = len(distance)
+
+    # Initialize pheromone matrix
+    pheromone = [[1.0 if i != j else 0.0 for j in range(n)]
+                 for i in range(n)]
+
+    best_route = None
+    best_length = float("inf")
+
+    for _ in range(iterations):
+        routes = []
+
+        # Each ant constructs a route
+        for _ant in range(ants):
+            route = [0]
+            unvisited = set(range(1, n))
+
+            while unvisited:
+                current = route[-1]
+                choices = []
+                weights = []
+
+                for city in unvisited:
+                    tau = pheromone[current][city] ** alpha
+                    eta = (1.0 / distance[current][city]) ** beta
+
+                    choices.append(city)
+                    weights.append(tau * eta)
+
+                total = sum(weights)
+                probabilities = [w / total for w in weights]
+
+                next_city = random.choices(
+                    choices, weights=probabilities, k=1
+                )[0]
+
+                route.append(next_city)
+                unvisited.remove(next_city)
+
+            # Return to starting city
+            route.append(0)
+
+            # Calculate total distance
+            length = sum(
+                distance[route[i]][route[i + 1]]
+                for i in range(n)
+            )
+
+            routes.append((route, length))
+
+            if length < best_length:
+                best_route = route
+                best_length = length
+
+        # Pheromone evaporation
+        for i in range(n):
+            for j in range(n):
+                pheromone[i][j] *= (1.0 - evaporation)
+
+        # Pheromone deposition
+        for route, length in routes:
+            deposit = 1.0 / length
+
+            for i in range(n):
+                a, b = route[i], route[i + 1]
+                pheromone[a][b] += deposit
+                pheromone[b][a] += deposit
+
+    return best_route, best_length
+
+
+if __name__ == "__main__":
+
+    distance = [
+        [0, 2, 9, 10, 7],
+        [2, 0, 6, 4, 3],
+        [9, 6, 0, 3, 8],
+        [10, 4, 3, 0, 5],
+        [7, 3, 8, 5, 0]
+    ]
+
+    route, length = ant_colony_optimization(distance)
+
+    print("Initial distance matrix:")
+    for row in distance:
+        print(row)
+
+    print("Iterations performed:", 20)
+    print("Number of ants:", 5)
+    print("Best route:", route)
+    print("Minimum distance:", length)

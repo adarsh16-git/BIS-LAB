@@ -1,9 +1,11 @@
 import random
 import concurrent.futures
 
-WIDTH, HEIGHT = 20, 20
-ITERATIONS = 10
-NUM_THREADS = 4
+WIDTH, HEIGHT = 5, 5
+ITERATIONS = 3
+NUM_THREADS = 2
+
+random.seed(42)
 
 current_grid = [[random.choice([0, 1]) for _ in range(WIDTH)] for _ in range(HEIGHT)]
 next_grid = [[0 for _ in range(WIDTH)] for _ in range(HEIGHT)]
@@ -31,6 +33,10 @@ def update_cell_range(start_y, end_y):
             else:
                 next_grid[y][x] = state
 
+print("Initial Grid:")
+for row in current_grid:
+    print(row)
+
 for _ in range(ITERATIONS):
     chunk_size = HEIGHT // NUM_THREADS
     with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
@@ -42,3 +48,7 @@ for _ in range(ITERATIONS):
         concurrent.futures.wait(futures)
         
     current_grid = [row[:] for row in next_grid]
+
+print("\nFinal Grid:")
+for row in current_grid:
+    print(row)

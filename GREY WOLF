@@ -1,0 +1,47 @@
+import random
+ 
+def objective(position):
+    # Sphere objective function; lower value is better.
+    return sum(x * x for x in position)
+ 
+def grey_wolf_optimizer(wolves=20, dimensions=2,
+                        iterations=100, lower=-5.0, upper=5.0,
+                        seed=5):
+    random.seed(seed)
+    population = [
+        [random.uniform(lower, upper) for _ in range(dimensions)]
+        for _ in range(wolves)
+    ]
+ 
+    for t in range(iterations):
+        population.sort(key=objective)
+        alpha = population[0][:]
+        beta = population[1][:]
+        delta = population[2][:]
+ 
+        a = 2 - 2 * t / iterations
+ 
+        for i in range(wolves):
+            new_position = []
+            for d in range(dimensions):
+                candidates = []
+                for leader in (alpha, beta, delta):
+                    r1, r2 = random.random(), random.random()
+                    A = 2 * a * r1 - a
+                    C = 2 * r2
+                    D = abs(C * leader[d] - population[i][d])
+                    candidates.append(leader[d] - A * D)
+                new_position.append(
+                    max(lower, min(upper, sum(candidates) / 3))
+                )
+            population[i] = new_position
+ 
+    population.sort(key=objective)
+    return population[0], objective(population[0])
+ 
+if __name__ == "__main__":
+    best_position, best_fitness = grey_wolf_optimizer()
+    print("Number of wolves:", 20)
+    print("Iterations:", 100)
+    print("Best solution:", [round(x, 6) for x in best_position])
+    print("Best fitness:", round(best_fitness, 8))

@@ -1,0 +1,64 @@
+import random
+
+FUNCTIONS = ['+', '-', '*']
+TERMINALS = ['x']
+HEAD_LEN = 3
+TAIL_LEN = HEAD_LEN + 1
+GENE_LEN = HEAD_LEN + TAIL_LEN
+POP_SIZE = 20
+GENERATIONS = 50
+
+DATASET = [(x, x**2 + x) for x in range(-5, 6)]
+
+def create_chromosome():
+    head = [random.choice(FUNCTIONS + TERMINALS) for _ in range(HEAD_LEN)]
+    tail = [random.choice(TERMINALS) for _ in range(TAIL_LEN)]
+    return head + tail
+
+def evaluate_tree(chromosome, x):
+    queue = list(chromosome)
+    def parse_node():
+        if not queue:
+            return 0
+        token = queue.pop(0)
+        if token == 'x':
+            return x
+        elif token in FUNCTIONS:
+            left = parse_node()
+            right = parse_node()
+            if token == '+': return left + right
+            if token == '-': return left - right
+            if token == '*': return left * right
+        return 0
+    return parse_node()
+
+def get_fitness(chromosome):
+    total_error = 0
+    for x, y_target in DATASET:
+        try:
+            y_pred = evaluate_tree(chromosome, x)
+            total_error += abs(y_target - y_pred)
+        except (ZeroDivisionError, OverflowError):
+            total_error += 9999
+    return 1 / (1 + total_error)
+
+def mutate(chromosome):
+    mutated = list(chromosome)
+    for i in range(len(mutated)):
+        if random.random() < 0.1:
+            if i < HEAD_LEN:
+                mutated[i] = random.choice(FUNCTIONS + TERMINALS)
+            else:
+                mutated[i] = random.choice(TERMINALS)
+    return mutated
+
+population = [create_chromosome() for _ in range(POP_SIZE)]
+
+for gen in range(GENERATIONS):
+    population = sorted(population, key=get_fitness, reverse=True)
+    if get_fitness(population[0]) > 0.99:
+        break
+    next_gen = population[:POP_SIZE//2] * 2
+    population = [next_gen[0]] + [mutate(ind) for ind in next_gen[1:]]
+
+best_chrom = sorted(population, key=get_fitness, reverse=True)[0]

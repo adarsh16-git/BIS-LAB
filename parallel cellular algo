@@ -1,0 +1,44 @@
+import random
+import concurrent.futures
+
+WIDTH, HEIGHT = 20, 20
+ITERATIONS = 10
+NUM_THREADS = 4
+
+current_grid = [[random.choice([0, 1]) for _ in range(WIDTH)] for _ in range(HEIGHT)]
+next_grid = [[0 for _ in range(WIDTH)] for _ in range(HEIGHT)]
+
+def count_neighbors(grid, x, y):
+    count = 0
+    for i in [-1, 0, 1]:
+        for j in [-1, 0, 1]:
+            if i == 0 and j == 0:
+                continue
+            nx = (x + i) % WIDTH
+            ny = (y + j) % HEIGHT
+            count += grid[ny][nx]
+    return count
+
+def update_cell_range(start_y, end_y):
+    for y in range(start_y, end_y):
+        for x in range(WIDTH):
+            neighbors = count_neighbors(current_grid, x, y)
+            state = current_grid[y][x]
+            if state == 1 and (neighbors < 2 or neighbors > 3):
+                next_grid[y][x] = 0
+            elif state == 0 and neighbors == 3:
+                next_grid[y][x] = 1
+            else:
+                next_grid[y][x] = state
+
+for _ in range(ITERATIONS):
+    chunk_size = HEIGHT // NUM_THREADS
+    with concurrent.futures.ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
+        futures = []
+        for t in range(NUM_THREADS):
+            start_y = t * chunk_size
+            end_y = HEIGHT if t == NUM_THREADS - 1 else (t + 1) * chunk_size
+            futures.append(executor.submit(update_cell_range, start_y, end_y))
+        concurrent.futures.wait(futures)
+        
+    current_grid = [row[:] for row in next_grid]

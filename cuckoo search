@@ -1,0 +1,108 @@
+
+import random
+import math
+
+# Objective function
+def objective(x):
+    return x[0] ** 2 + x[1] ** 2
+
+
+# Generate Levy flight step
+def levy_flight(beta=1.5):
+    sigma = (
+        math.gamma(1 + beta) * math.sin(math.pi * beta / 2)
+        / (math.gamma((1 + beta) / 2) * beta
+           * 2 ** ((beta - 1) / 2))
+    ) ** (1 / beta)
+
+    u = random.gauss(0, sigma)
+    v = random.gauss(0, 1)
+
+    return u / (abs(v) ** (1 / beta) + 1e-12)
+
+
+# Cuckoo Search Algorithm
+def cuckoo_search(n=20, max_gen=100, pa=0.25,
+                  alpha=0.01, lower=-5.0, upper=5.0, seed=29):
+
+    random.seed(seed)
+
+    # Initialize nests
+    nests = [
+        [random.uniform(lower, upper), random.uniform(lower, upper)]
+        for _ in range(n)
+    ]
+
+    fitness = [objective(nest) for nest in nests]
+
+    best_index = min(range(n), key=lambda i: fitness[i])
+    best_nest = nests[best_index][:]
+    best_fitness = fitness[best_index]
+
+    t = 0
+
+    while t < max_gen:
+
+        # Generate new solutions using Levy flights
+        for i in range(n):
+            step = levy_flight()
+
+            new_nest = [
+                max(lower, min(upper,
+                    nests[i][d] + alpha * step *
+                    (best_nest[d] - nests[i][d])))
+                for d in range(2)
+            ]
+
+            new_fitness = objective(new_nest)
+
+            # Select a random nest
+            j = random.randrange(n)
+
+            # Replace if new solution is better
+            if new_fitness < fitness[j]:
+                nests[j] = new_nest
+                fitness[j] = new_fitness
+
+        # Abandon worst nests
+        abandoned_count = max(1, int(pa * n))
+
+        worst_indices = sorted(
+            range(n),
+            key=lambda i: fitness[i],
+            reverse=True
+        )[:abandoned_count]
+
+        for i in worst_indices:
+            base = random.choice(nests)
+
+            new_nest = [
+                max(lower, min(upper,
+                    base[d] + random.uniform(-1, 1) * 0.1))
+                for d in range(2)
+            ]
+
+            nests[i] = new_nest
+            fitness[i] = objective(new_nest)
+
+        # Update best solution
+        current = min(range(n), key=lambda i: fitness[i])
+
+        if fitness[current] < best_fitness:
+            best_nest = nests[current][:]
+            best_fitness = fitness[current]
+
+        t += 1
+
+    return best_nest, best_fitness
+
+
+# Main program
+if __name__ == "__main__":
+
+    best_solution, best_value = cuckoo_search()
+
+    print("Number of nests: 20")
+    print("Iterations: 100")
+    print("Best solution:", [round(v, 3) for v in best_solution])
+    print("Best fitness:", round(best_value, 4))

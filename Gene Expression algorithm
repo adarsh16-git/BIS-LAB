@@ -1,22 +1,30 @@
 import random
+import math
 
+# --- CONFIGURATION ---
 FUNCTIONS = ['+', '-', '*']
 TERMINALS = ['x']
 HEAD_LEN = 3
-TAIL_LEN = HEAD_LEN + 1
+TAIL_LEN = HEAD_LEN * (2 - 1) + 1  # Formulated so trees always close safely (max arity=2)
 GENE_LEN = HEAD_LEN + TAIL_LEN
 POP_SIZE = 20
 GENERATIONS = 50
 
+# Target Dataset: y = x^2 + x
 DATASET = [(x, x**2 + x) for x in range(-5, 6)]
 
+# --- CORE GEP ALGORITHM STEPS ---
+
 def create_chromosome():
+    """Step 1: Initialize random flat linear genotype"""
     head = [random.choice(FUNCTIONS + TERMINALS) for _ in range(HEAD_LEN)]
     tail = [random.choice(TERMINALS) for _ in range(TAIL_LEN)]
     return head + tail
 
 def evaluate_tree(chromosome, x):
+    """Step 2a: Express flat chromosome and evaluate mathematically"""
     queue = list(chromosome)
+    
     def parse_node():
         if not queue:
             return 0
@@ -30,9 +38,11 @@ def evaluate_tree(chromosome, x):
             if token == '-': return left - right
             if token == '*': return left * right
         return 0
+    
     return parse_node()
 
 def get_fitness(chromosome):
+    """Step 2b: Evaluate total fitness (Lower error = Higher fitness)"""
     total_error = 0
     for x, y_target in DATASET:
         try:
@@ -40,25 +50,40 @@ def get_fitness(chromosome):
             total_error += abs(y_target - y_pred)
         except (ZeroDivisionError, OverflowError):
             total_error += 9999
-    return 1 / (1 + total_error)
+    return 1 / (1 + total_error)  # Normalizes fitness between 0 and 1
 
 def mutate(chromosome):
+    """Step 2d: Modify genome via flat-string mutation"""
     mutated = list(chromosome)
     for i in range(len(mutated)):
-        if random.random() < 0.1:
+        if random.random() < 0.1:  # 10% Mutation Rate
             if i < HEAD_LEN:
                 mutated[i] = random.choice(FUNCTIONS + TERMINALS)
             else:
                 mutated[i] = random.choice(TERMINALS)
     return mutated
 
+# --- MAIN EVOLUTION LOOP ---
 population = [create_chromosome() for _ in range(POP_SIZE)]
 
 for gen in range(GENERATIONS):
+    # Sort population by highest fitness first
     population = sorted(population, key=get_fitness, reverse=True)
-    if get_fitness(population[0]) > 0.99:
+    best_chrom = population[0]
+    best_fit = get_fitness(best_chrom)
+    
+    if best_fit > 0.99: # Perfect match found
+        print(f"🎉 Solved at Generation {gen}!")
         break
-    next_gen = population[:POP_SIZE//2] * 2
-    population = [next_gen[0]] + [mutate(ind) for ind in next_gen[1:]]
+        
+    # Step 2c: Selection (Elitism + simple replication of top half)
+    next_gen = population[:POP_SIZE//2] * 2 
+    
+    # Step 2d: Modification
+    population = [next_gen[0]] + [mutate(ind) for ind in next_gen[1:]] # Keep ultimate champion intact
 
-best_chrom = sorted(population, key=get_fitness, reverse=True)[0]
+# --- RESULTS ---
+print(f"Best Expression Genotype: {' '.join(best_chrom)}")
+print("Sample Predictions:")
+for test_x, target in DATASET[:3]:
+    print(f"  Input x={test_x} -> Predicted: {evaluate_tree(best_chrom, test_x)} (Target: {target})")
